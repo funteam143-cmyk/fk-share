@@ -1,7 +1,7 @@
 package com.fk.videoplayer;
 
-import android.app.Dialog;
 import android.app.Activity;
+import android.app.Dialog;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -14,15 +14,20 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.media3.common.AudioAttributes;
+import androidx.media3.common.C;
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.Player;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.ui.PlayerView;
 
 public class PlayerActivity extends Activity {
-    ExoPlayer player;
-    PlayerView pv;
-    TextView title;
-    View tint;
+    private ExoPlayer player;
+    private PlayerView pv;
+    private View tint;
 
     final String[] names = {
         "Original","Clear","Ultra Clear","Super Clear","HDR","Super HDR","Vivid",
@@ -55,7 +60,7 @@ public class PlayerActivity extends Activity {
         tint.setAlpha(0f);
         root.addView(tint, new FrameLayout.LayoutParams(-1, -1));
 
-        title = new TextView(this);
+        TextView title = new TextView(this);
         title.setText(getIntent().getStringExtra("name"));
         title.setTextColor(Color.WHITE);
         title.setTextSize(16);
@@ -76,11 +81,37 @@ public class PlayerActivity extends Activity {
 
         player = new ExoPlayer.Builder(this).build();
         pv.setPlayer(player);
+
+        AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                .build();
+        player.setAudioAttributes(audioAttributes, true);
+
+        player.addListener(new Player.Listener() {
+            @Override public void onPlayerError(PlaybackException error) {
+                Toast.makeText(PlayerActivity.this,
+                        "This audio/video format is not supported on this device.",
+                        Toast.LENGTH_LONG).show();
+            }
+        });
+
         Uri u = getIntent().getData();
+        if (u == null) {
+            String uriText = getIntent().getStringExtra("uri");
+            if (uriText != null) {
+                try { u = Uri.parse(uriText); } catch (Exception ignored) {}
+            }
+        }
+
         if (u != null) {
-            player.setMediaItem(MediaItem.fromUri(u));
-            player.prepare();
-            player.play();
+            try {
+                player.setMediaItem(MediaItem.fromUri(u));
+                player.prepare();
+                player.play();
+            } catch (RuntimeException e) {
+                Toast.makeText(this, "Unable to open this video.", Toast.LENGTH_LONG).show();
+            }
         }
     }
 
@@ -122,16 +153,13 @@ public class PlayerActivity extends Activity {
         box.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
         d.setContentView(box);
 
+        d.show();
         Window w = d.getWindow();
         if (w != null) {
             w.setBackgroundDrawableResource(android.R.color.transparent);
-        }
-        d.show();
-        w = d.getWindow();
-        if (w != null) {
             w.setLayout(
-                (int)(getResources().getDisplayMetrics().widthPixels * .92),
-                (int)(getResources().getDisplayMetrics().heightPixels * .78));
+                    (int)(getResources().getDisplayMetrics().widthPixels * .92),
+                    (int)(getResources().getDisplayMetrics().heightPixels * .78));
         }
     }
 
@@ -146,7 +174,11 @@ public class PlayerActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
-        if (player != null) player.release();
+        if (player != null) {
+            pv.setPlayer(null);
+            player.release();
+            player = null;
+        }
         super.onDestroy();
     }
 }
