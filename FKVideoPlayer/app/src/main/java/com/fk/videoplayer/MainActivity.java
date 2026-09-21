@@ -229,7 +229,7 @@ public class MainActivity extends Activity {
         return a.length>1?a[a.length-2]:"Directories";
     }
 
-    private TextView nav(String ico,String label,boolean active) {
+    private LinearLayout nav(String ico,String label,boolean active) {
         LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setGravity(Gravity.CENTER);
         TextView i=text(ico,28,active?GREEN:MUTED); i.setGravity(Gravity.CENTER);
         TextView l=text(label,15,active?GREEN:MUTED); l.setGravity(Gravity.CENTER);
