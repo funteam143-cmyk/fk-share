@@ -7,18 +7,24 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
+  private WebView web;
   @Override public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    WebView web = new WebView(this);
+    web = new WebView(this);
     WebSettings settings = web.getSettings();
     settings.setJavaScriptEnabled(true);
     settings.setDomStorageEnabled(true);
+    settings.setAllowFileAccess(true);
+    settings.setAllowContentAccess(true);
+    // The bundled HTML calls the Mail.tm HTTPS API from a file:// origin.
+    settings.setAllowFileAccessFromFileURLs(true);
+    settings.setAllowUniversalAccessFromFileURLs(true);
     web.setWebViewClient(new WebViewClient());
     setContentView(web);
     web.loadUrl("file:///android_asset/index.html");
   }
   @Override public void onBackPressed() {
-    WebView web = (WebView)findViewById(android.R.id.content).getRootView();
-    super.onBackPressed();
+    if (web != null && web.canGoBack()) web.goBack();
+    else super.onBackPressed();
   }
 }
