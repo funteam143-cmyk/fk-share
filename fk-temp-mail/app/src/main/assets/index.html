@@ -21,7 +21,33 @@ function load(){try{const x=JSON.parse(localStorage.getItem('fk_mail_account')||
 async function api(path,options={}){const headers=Object.assign({'Accept':'application/ld+json','Content-Type':'application/json'},options.headers||{});if(account&&account.token)headers.Authorization='Bearer '+account.token;const res=await fetch(API+path,Object.assign({},options,{headers}));if(!res.ok){let msg='HTTP '+res.status;try{const j=await res.json();msg=j['hydra:description']||j.message||msg}catch(e){}throw new Error(msg)}if(res.status===204)return null;return res.json()}
 async function generate(){setBusy(true);setStatus('Finding a free email domain…');try{const d=await fetch(API+'/domains?page=1',{headers:{Accept:'application/ld+json'}});if(!d.ok)throw new Error('Free email service is not responding');const data=await d.json();const domains=(data['hydra:member']||[]).filter(x=>x.isActive&&!x.isPrivate);if(!domains.length)throw new Error('No free domains are available right now');const domain=domains[Math.floor(Math.random()*domains.length)].domain;const chars='abcdefghijklmnopqrstuvwxyz0123456789';let user='fk';for(let i=0;i<9;i++)user+=chars[Math.floor(Math.random()*chars.length)];const address=user+'@'+domain;const password='Fk!'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)+'9';await fetch(API+'/accounts',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/ld+json'},body:JSON.stringify({address,password})}).then(async r=>{if(!r.ok){let j={};try{j=await r.json()}catch(e){}throw new Error(j['hydra:description']||'Could not create address. Try again.')}});const tok=await fetch(API+'/token',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/ld+json'},body:JSON.stringify({address,password})});if(!tok.ok)throw new Error('Address created, but sign-in failed. Generate again.');const t=await tok.json();const mins=Number($('expiry').value);account={address,password,token:t.token,id:t.id,expiresAt:Date.now()+mins*60000};save();$('address').textContent=address;showExpiry();$('detailPanel').classList.add('hidden');setStatus('Your temporary inbox is ready.');startTimers();await refreshInbox()}catch(e){setStatus('Error: '+e.message+' (Check internet and try again)')}finally{setBusy(false)}}
 async function refreshInbox(){if(!account){$('inboxTitle').textContent='No active address';$('inboxDesc').textContent='Tap Generate to create a free inbox.';return}setBusy(true);try{let data;try{data=await api('/messages?page=1')}catch(e){if(String(e.message).includes('401')){const t=await fetch(API+'/token',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/ld+json'},body:JSON.stringify({address:account.address,password:account.password})});if(!t.ok)throw e;const j=await t.json();account.token=j.token;save();data=await api('/messages?page=1')}else throw e}const items=data['hydra:member']||[];const box=$('messages');box.className=items.length?'':'empty';box.innerHTML='';if(!items.length){box.className='empty';box.innerHTML='<div class="emoji">✉️</div><b>No messages yet</b><p class="muted">Send an email to this address. Then refresh.</p>'}else{items.forEach(m=>{const el=document.createElement('div');el.className='message';const from=document.createElement('b');from.textContent=(m.from&& (m.from.name||m.from.address))||'Unknown sender';const subj=document.createElement('small');subj.textContent=m.subject||'(No subject)';const intro=document.createElement('p');intro.textContent=m.intro||'';el.append(from,subj,intro);el.onclick=()=>openMessage(m.id);box.appendChild(el)})}$('inboxTitle').textContent=items.length?items.length+' message(s)':'No messages yet';$('inboxDesc').textContent=items.length?'Tap a message to read it.':'Your inbox is active and waiting.';setStatus('Inbox updated')}catch(e){setStatus('Inbox error: '+e.message)}finally{setBusy(false)}}
-async function openMessage(id){try{const m=await api('/messages/'+encodeURIComponent(id));$('detailSubject').textContent=m.subject||'(No subject)';$('detailFrom').textContent='From: '+((m.from&&m.from.address)||'Unknown');$('detailBody').textContent=(m.text&&m.text.join('\n'))||m.intro||'No plain-text content.';$('detailPanel').classList.remove('hidden');if(!m.seen){await api('/messages/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({seen:true})}).catch(()=>{})}}catch(e){setStatus('Could not open message: '+e.message)}}
+function messageBody(m){
+  const asText=v=>Array.isArray(v)?v.filter(Boolean).join('\n'):typeof v==='string'?v:'';
+  let plain=asText(m.text);
+  if(plain.trim())return plain;
+  const html=asText(m.html);
+  if(html.trim()){
+    try{
+      const doc=new DOMParser().parseFromString(html,'text/html');
+      doc.querySelectorAll('script,style,head,meta,link').forEach(n=>n.remove());
+      return (doc.body.innerText||doc.body.textContent||'').replace(/\u00a0/g,' ').trim()||m.intro||'Message content is empty.';
+    }catch(e){}
+  }
+  return m.intro||'No readable message content.';
+}
+async function openMessage(id){
+  try{
+    setStatus('Opening message…');
+    const m=await api('/messages/'+encodeURIComponent(id));
+    $('detailSubject').textContent=m.subject||'(No subject)';
+    $('detailFrom').textContent='From: '+((m.from&&m.from.address)||'Unknown');
+    $('detailBody').textContent=messageBody(m);
+    $('detailPanel').classList.remove('hidden');
+    $('detailPanel').scrollIntoView({behavior:'smooth',block:'start'});
+    if(!m.seen)await api('/messages/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({seen:true})}).catch(()=>{});
+    setStatus('Message opened');
+  }catch(e){setStatus('Could not open message: '+e.message)}
+}
 function closeMessage(){$('detailPanel').classList.add('hidden')}
 async function copyAddress(){if(!account){setStatus('Generate an address first');return}try{await navigator.clipboard.writeText(account.address);setStatus('Address copied')}catch(e){setStatus(account.address)}}
 function showExpiry(){if(!account)return;const left=Math.max(0,account.expiresAt-Date.now());$('expiryLabel').textContent='Expires in '+Math.ceil(left/60000)+' min'}
