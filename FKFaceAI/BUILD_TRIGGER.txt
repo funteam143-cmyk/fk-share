@@ -1,1 +1,1 @@
-Trigger initial GitHub Actions APK build for FK Face AI.
+Trigger build after media workflow UI update.
