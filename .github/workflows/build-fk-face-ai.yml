@@ -1,0 +1,29 @@
+name: Build FK Face AI APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "fk-face-ai" ]
+    paths:
+      - "FKFaceAI/**"
+      - ".github/workflows/build-fk-face-ai.yml"
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build debug APK
+        run: gradle --no-daemon -p FKFaceAI assembleDebug
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FK-Face-AI-debug
+          path: FKFaceAI/app/build/outputs/apk/debug/app-debug.apk
