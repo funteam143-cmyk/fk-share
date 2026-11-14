@@ -255,7 +255,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)
                             val mimeCol = cursor.getColumnIndex(MediaStore.Images.Media.MIME_TYPE)
                             var count = 0
-                            while (cursor.moveToNext() && count < 60) {
+                            while (cursor.moveToNext()) {
                                 val id = cursor.getLong(idCol)
                                 val name = cursor.getString(nameCol) ?: "Image_$id"
                                 val size = cursor.getLong(sizeCol)
@@ -280,7 +280,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
                             val mimeCol = cursor.getColumnIndex(MediaStore.Video.Media.MIME_TYPE)
                             var count = 0
-                            while (cursor.moveToNext() && count < 40) {
+                            while (cursor.moveToNext()) {
                                 val id = cursor.getLong(idCol)
                                 val name = cursor.getString(nameCol) ?: "Video_$id"
                                 val size = cursor.getLong(sizeCol)
@@ -344,7 +344,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
                             val mimeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
                             var count = 0
-                            while (cursor.moveToNext() && count < 300) {
+                            while (cursor.moveToNext()) {
                                 val id = cursor.getLong(idCol)
                                 val uri = ContentUris.withAppendedId(collection, id)
                                 items.add(TransferItem(
@@ -369,7 +369,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         apps.asSequence()
                             .filter { it.sourceDir != null && File(it.sourceDir).isFile }
                             .sortedBy { pm.getApplicationLabel(it).toString().lowercase() }
-                            .take(300)
+                            .toList()
                             .forEach { app ->
                                 val apk = File(app.sourceDir)
                                 val label = pm.getApplicationLabel(app).toString()
