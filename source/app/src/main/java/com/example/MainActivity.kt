@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -73,15 +74,17 @@ fun AppNavigation(viewModel: MainViewModel) {
     // Permissions check for nearby P2P Wi-Fi
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) {
+    ) { results ->
         viewModel.refreshNetworkState()
         viewModel.selectTab(viewModel.selectedTab.value)
+        if (results.values.any { !it }) {
+            Toast.makeText(context, "Nearby Wi-Fi permission is needed to connect phones. Allow it in App Settings.", Toast.LENGTH_LONG).show()
+        }
     }
 
     LaunchedEffect(Unit) {
         val permissionsToRequest = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissionsToRequest.add(Manifest.permission.NEARBY_WIFI_DEVICES)
             permissionsToRequest.add(Manifest.permission.READ_MEDIA_IMAGES)
             permissionsToRequest.add(Manifest.permission.READ_MEDIA_VIDEO)
             permissionsToRequest.add(Manifest.permission.READ_MEDIA_AUDIO)
@@ -89,13 +92,29 @@ fun AppNavigation(viewModel: MainViewModel) {
                 permissionsToRequest.add(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
             }
         } else {
-            permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
             permissionsToRequest.add(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
         val missing = permissionsToRequest.filter {
             ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
         }
         if (missing.isNotEmpty()) permissionLauncher.launch(missing.toTypedArray())
+    }
+
+    // Ask for the Android permission needed for nearby Wi-Fi discovery
+    // only when the user opens the phone-connection screen.
+    LaunchedEffect(currentScreen) {
+        if (currentScreen == Screen.DISCOVERY) {
+            val nearbyPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Manifest.permission.NEARBY_WIFI_DEVICES
+            } else {
+                Manifest.permission.ACCESS_FINE_LOCATION
+            }
+            if (ContextCompat.checkSelfPermission(context, nearbyPermission) != PackageManager.PERMISSION_GRANTED) {
+                permissionLauncher.launch(arrayOf(nearbyPermission))
+            } else {
+                viewModel.refreshNetworkState()
+            }
+        }
     }
 
     // Handle System Back Press
