@@ -480,7 +480,7 @@ class TransferEngine(
 
                     val totalDurationSec = (now - startTime) / 1_000_000_000.0
                     val avgSpeed = if (totalDurationSec > 0) {
-                        (overallTransferred / (1024.0 * 1024.0)) / totalDurationSec
+                        (overallTransferred.get() / (1024.0 * 1024.0)) / totalDurationSec
                     } else 0.0
 
                     val remainingBytes = (totalBytes - overallTransferred).coerceAtLeast(0L)
@@ -492,7 +492,7 @@ class TransferEngine(
                     lastWindowBytes = overallTransferred
 
                     _progressState.value = _progressState.value.copy(
-                        totalTransferredBytes = overallTransferred,
+                        totalTransferredBytes = overallTransferred.get(),
                         currentSpeedMBps = currentSpeed,
                         peakSpeedMBps = peakSpeed,
                         averageSpeedMBps = avgSpeed,
