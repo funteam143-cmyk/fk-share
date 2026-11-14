@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
@@ -83,6 +85,7 @@ fun FilePickerScreen(
     onFileToggled: (TransferItem) -> Unit,
     onFilesAdded: (List<Uri>) -> Unit,
     onClearSelected: () -> Unit,
+    onRemoveSelected: (TransferItem) -> Unit,
     onBack: () -> Unit,
     onProceedToSend: () -> Unit
 ) {
@@ -250,6 +253,28 @@ fun FilePickerScreen(
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
+                }
+            }
+
+            if (selectedFiles.isNotEmpty()) {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(selectedFiles) { selected ->
+                        Card(
+                            modifier = Modifier.clickable { onRemoveSelected(selected) },
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(selected.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp)
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Icon(Icons.Default.Close, contentDescription = "Remove selected file", modifier = Modifier.size(15.dp))
+                            }
+                        }
+                    }
                 }
             }
 
