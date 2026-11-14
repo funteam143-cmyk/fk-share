@@ -46,7 +46,14 @@ object StorageHelper {
         var size = 0L
 
         try {
-            contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            if (uri.scheme == "file") {
+                val file = File(uri.path ?: "")
+                if (file.exists()) {
+                    name = file.name
+                    size = file.length()
+                }
+            } else {
+                contentResolver.query(uri, null, null, null, null)?.use { cursor ->
                 val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                 val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
                 if (cursor.moveToFirst()) {
@@ -57,6 +64,7 @@ object StorageHelper {
                         size = cursor.getLong(sizeIndex)
                     }
                 }
+            }
             }
         } catch (_: Exception) {
             // Fallback to uri path segment
