@@ -379,8 +379,21 @@ fun FilePickerScreen(
                         }
                     }
                 }
+            } else if (selectedTab == MediaTab.APPS) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(4),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(scannedMedia) { item ->
+                        val isSelected = selectedFiles.any { it.id == item.id || (it.uri != null && it.uri == item.uri) }
+                        AppGridItem(item = item, isSelected = isSelected, onToggle = { onFileToggled(item) })
+                    }
+                }
             } else {
-                // List View for Audio, Documents, Apps, All
+                // List View for Audio, Documents, All
                 if (scannedMedia.isEmpty()) {
                     EmptyMediaView(
                         icon = when (selectedTab) {
@@ -410,6 +423,37 @@ fun FilePickerScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun AppGridItem(item: TransferItem, isSelected: Boolean, onToggle: () -> Unit) {
+    val context = LocalContext.current
+    val appIcon = remember(item.id) {
+        runCatching { context.packageManager.getApplicationIcon(item.id.removePrefix("app_")) }.getOrNull()
+    }
+    Column(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(3.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier.size(58.dp).clip(RoundedCornerShape(14.dp))
+                .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            if (appIcon != null) {
+                AsyncImage(model = appIcon, contentDescription = item.name, modifier = Modifier.size(48.dp))
+            } else {
+                Icon(Icons.Default.Android, contentDescription = null, modifier = Modifier.size(40.dp))
+            }
+            if (isSelected) {
+                Icon(Icons.Default.Check, contentDescription = "Selected", tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.align(Alignment.TopEnd).size(18.dp))
+            }
+        }
+        Text(item.name, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis,
+            fontSize = 10.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
     }
 }
 
