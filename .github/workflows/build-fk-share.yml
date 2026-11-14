@@ -31,3 +31,5 @@ jobs:
           if-no-files-found: error
 
 # Rebuild after contact, media preview, app-grid, QR and receiver retry fixes.
+
+# Build with Wi-Fi IP selection, contact VCF metadata and receiver retry updates.
