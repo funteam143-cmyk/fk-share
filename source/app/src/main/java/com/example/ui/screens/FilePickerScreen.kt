@@ -1,6 +1,9 @@
 package com.example.ui.screens
 
 import android.net.Uri
+import android.provider.ContactsContract
+import android.media.MediaMetadataRetriever
+import android.graphics.Bitmap
 import android.widget.MediaController
 import android.widget.VideoView
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -20,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -69,6 +73,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.foundation.Image
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -110,6 +119,22 @@ fun FilePickerScreen(
         }
     }
 
+    val context = LocalContext.current
+    val contactPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickContact()
+    ) { contactUri ->
+        if (contactUri != null) {
+            val lookupKey = runCatching {
+                context.contentResolver.query(contactUri, arrayOf(ContactsContract.Contacts.LOOKUP_KEY), null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getString(0) else null
+                }
+            }.getOrNull()
+            if (!lookupKey.isNullOrBlank()) {
+                val vcardUri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_VCARD_URI, lookupKey)
+                onFilesAdded(listOf(vcardUri))
+            }
+        }
+    }
     val totalBytes = selectedFiles.sumOf { it.size }
 
     Scaffold(
@@ -290,6 +315,15 @@ fun FilePickerScreen(
                 }
             }
 
+            TextButton(
+                onClick = { contactPickerLauncher.launch(null) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            ) {
+                Icon(Icons.Default.Android, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Share a Contact")
+            }
+
             // Category Tab Row
             ScrollableTabRow(
                 selectedTabIndex = selectedTab.ordinal,
@@ -386,6 +420,22 @@ fun MediaGridItem(
     onToggle: () -> Unit
 ) {
     var showPreview by remember(item.id) { mutableStateOf(false) }
+    var showPhotoPreview by remember(item.id) { mutableStateOf(false) }
+    val context = LocalContext.current
+    val videoFrame by produceState<Bitmap?>(initialValue = null, key1 = item.uri) {
+        if (item.mimeType.startsWith("video/") && item.uri != null) {
+            value = withContext(Dispatchers.IO) {
+                runCatching {
+                    MediaMetadataRetriever().let { retriever ->
+                        try {
+                            retriever.setDataSource(context, item.uri)
+                            retriever.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                        } finally { retriever.release() }
+                    }
+                }.getOrNull()
+            }
+        }
+    }
     Card(
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier
@@ -393,18 +443,36 @@ fun MediaGridItem(
             .pointerInput(item.id) {
                 detectTapGestures(
                     onTap = { onToggle() },
-                    onLongPress = { if (item.mimeType.startsWith("video/") && item.uri != null) showPreview = true }
+                    onLongPress = {
+                    if (item.mimeType.startsWith("video/") && item.uri != null) showPreview = true
+                    else if (item.mimeType.startsWith("image/") && item.uri != null) showPhotoPreview = true
+                }
                 )
             },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            AsyncImage(
-                model = item.uri,
-                contentDescription = item.name,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+            if (item.mimeType.startsWith("video/") && videoFrame != null) {
+                Image(bitmap = videoFrame!!.asImageBitmap(), contentDescription = item.name, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            } else {
+                AsyncImage(
+                    model = item.uri,
+                    contentDescription = item.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            if (item.mimeType.startsWith("video/")) {
+                Text(
+                    text = item.name,
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                        .background(Color.Black.copy(alpha = 0.62f)).padding(horizontal = 5.dp, vertical = 3.dp)
+                )
+            }
 
             // Selection Indicator Checkbox
             Box(
@@ -446,6 +514,22 @@ fun MediaGridItem(
                 )
             }
         }
+    }
+
+    if (showPhotoPreview && item.uri != null) {
+        AlertDialog(
+            onDismissRequest = { showPhotoPreview = false },
+            title = { Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            text = {
+                AsyncImage(
+                    model = item.uri,
+                    contentDescription = item.name,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(0.85f),
+                    contentScale = ContentScale.Fit
+                )
+            },
+            confirmButton = { TextButton(onClick = { showPhotoPreview = false }) { Text("Close") } }
+        )
     }
 
     if (showPreview && item.uri != null) {
