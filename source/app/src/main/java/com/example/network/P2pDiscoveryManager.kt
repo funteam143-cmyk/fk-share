@@ -202,12 +202,12 @@ class P2pDiscoveryManager(
         }
     }
 
-    fun addDirectPeer(ipAddress: String, name: String = "Direct Peer") {
+    fun addDirectPeer(ipAddress: String, port: Int = NetworkUtils.DEFAULT_TRANSFER_PORT, name: String = "Direct Peer") {
         val newPeer = PeerDevice(
             id = "direct_${ipAddress.replace(".", "_")}",
             name = name,
             hostAddress = ipAddress,
-            port = NetworkUtils.DEFAULT_TRANSFER_PORT,
+            port = port.coerceIn(1, 65535),
             connectionType = ConnectionType.HOTSPOT,
             lastSeen = System.currentTimeMillis()
         )
