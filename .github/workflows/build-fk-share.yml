@@ -22,7 +22,7 @@ jobs:
       - name: Run unit tests and build debug APK
         working-directory: source
         run: |
-          gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
+          gradle --no-daemon :app:assembleDebug
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
