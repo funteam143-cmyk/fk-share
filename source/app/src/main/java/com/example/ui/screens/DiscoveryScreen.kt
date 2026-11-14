@@ -3,6 +3,7 @@ package com.example.ui.screens
 import androidx.activity.compose.rememberLauncherForActivityResult
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+import com.example.ui.CompactQrCaptureActivity
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -144,6 +145,7 @@ fun DiscoveryScreen(
                     IconButton(
                         onClick = {
                             val options = ScanOptions().apply {
+                                setCaptureActivity(CompactQrCaptureActivity::class.java)
                                 setDesiredBarcodeFormats(ScanOptions.QR_CODE)
                                 setPrompt("Scan FK Share receiver QR code")
                                 setBeepEnabled(false)
@@ -154,15 +156,6 @@ fun DiscoveryScreen(
                         modifier = Modifier.testTag("scan_qr_button")
                     ) {
                         Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan QR code")
-                    }
-                    IconButton(
-                        onClick = { showDirectIpDialog = true },
-                        modifier = Modifier.testTag("direct_ip_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Connect by IP"
-                        )
                     }
                 }
             )
@@ -288,11 +281,6 @@ fun DiscoveryScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
-                                TextButton(
-                                    onClick = { showDirectIpDialog = true }
-                                ) {
-                                    Text("Enter Receiver IP manually")
-                                }
                             }
                         }
                     }
@@ -308,48 +296,6 @@ fun DiscoveryScreen(
         }
     }
 
-    // Direct IP Connect Dialog
-    if (showDirectIpDialog) {
-        AlertDialog(
-            onDismissRequest = { showDirectIpDialog = false },
-            title = { Text("Connect by Local IP") },
-            text = {
-                Column {
-                    Text(
-                        text = "Enter the receiver's local IP address shown on their Receive screen:",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = directIpInput,
-                        onValueChange = { directIpInput = it },
-                        label = { Text("Receiver IP") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val cleanIp = directIpInput.trim()
-                        if (cleanIp.isNotEmpty()) {
-                            onAddDirectPeer(cleanIp)
-                        }
-                        showDirectIpDialog = false
-                    }
-                ) {
-                    Text("Add & Connect")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDirectIpDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
 }
 
 @Composable
