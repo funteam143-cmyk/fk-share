@@ -29,7 +29,10 @@ object NetworkUtils {
     private fun preferredWifiInterface(): NetworkInterface? {
         val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
             .filter { it.isUp && !it.isLoopback && isWifiOrP2pInterface(it.name) }
-        return interfaces.sortedByDescending { isPreferredInterface(it.name) }.firstOrNull()
+        return interfaces.sortedByDescending { networkInterface ->
+            val name = networkInterface.name.lowercase(Locale.ROOT)
+            name.startsWith("wlan") || name.startsWith("swlan") || name.startsWith("ap") || name.contains("wifi")
+        }.firstOrNull()
     }
 
     private fun isWifiOrP2pInterface(name: String): Boolean {
