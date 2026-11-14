@@ -1,0 +1,39 @@
+name: Inspect FK Share source and build
+on:
+  push:
+    paths:
+      - ".github/workflows/inspect-fk-share.yml"
+  workflow_dispatch:
+jobs:
+  inspect-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Extract and inspect source
+        run: |
+          set -e
+          unzip -q fk-share-source.zip -d android-project
+          cd android-project
+          echo "===== METADATA ====="
+          cat metadata.json
+          for f in app/src/main/java/com/example/ui/MainViewModel.kt app/src/main/java/com/example/ui/screens/FilePickerScreen.kt app/src/main/java/com/example/ui/screens/MainScreen.kt app/src/main/java/com/example/data/model/Models.kt app/src/main/AndroidManifest.xml app/build.gradle.kts; do
+            if [ -f "$f" ]; then
+              echo "===== FILE: $f ====="
+              cat "$f"
+            fi
+          done
+      - name: Build debug APK
+        run: |
+          cd android-project
+          gradle --no-daemon :app:assembleDebug
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FK-Share-inspection-build
+          path: android-project/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
