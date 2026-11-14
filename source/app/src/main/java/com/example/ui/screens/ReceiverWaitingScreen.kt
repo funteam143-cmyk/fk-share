@@ -1,5 +1,11 @@
 package com.example.ui.screens
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.runtime.remember
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -209,6 +215,27 @@ fun ReceiverWaitingScreen(
                         )
                     }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+            val qrBitmap = remember(localIp) {
+                runCatching {
+                    val matrix = QRCodeWriter().encode("FKSHARE|$localIp|52346", BarcodeFormat.QR_CODE, 360, 360)
+                    Bitmap.createBitmap(360, 360, Bitmap.Config.ARGB_8888).also { bitmap ->
+                        for (x in 0 until 360) for (y in 0 until 360) {
+                            bitmap.setPixel(x, y, if (matrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+                        }
+                    }
+                }.getOrNull()
+            }
+            if (qrBitmap != null) {
+                Image(
+                    bitmap = qrBitmap.asImageBitmap(),
+                    contentDescription = "Receiver connection QR code",
+                    modifier = Modifier.size(180.dp)
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text("Scan this QR code from the sender phone", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
