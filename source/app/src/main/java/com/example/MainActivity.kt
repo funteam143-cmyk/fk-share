@@ -19,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.example.ui.MainViewModel
 import com.example.ui.Screen
@@ -67,6 +68,8 @@ fun AppNavigation(viewModel: MainViewModel) {
     val progressState by viewModel.transferProgress.collectAsState()
     val lastCompleted by viewModel.lastCompletedTransfer.collectAsState()
 
+    val context = LocalContext.current
+
     // Permissions check for nearby P2P Wi-Fi
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -90,7 +93,7 @@ fun AppNavigation(viewModel: MainViewModel) {
             permissionsToRequest.add(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
         val missing = permissionsToRequest.filter {
-            ContextCompat.checkSelfPermission(viewModel.getApplication(), it) != PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
         }
         if (missing.isNotEmpty()) permissionLauncher.launch(missing.toTypedArray())
     }
