@@ -5,10 +5,9 @@ import android.widget.MediaController
 import android.widget.VideoView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -71,6 +70,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.runtime.remember
@@ -379,7 +379,6 @@ fun FilePickerScreen(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MediaGridItem(
     item: TransferItem,
@@ -391,10 +390,12 @@ fun MediaGridItem(
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier
             .size(110.dp)
-            .combinedClickable(
-                onClick = onToggle,
-                onLongClick = { if (item.mimeType.startsWith("video/") && item.uri != null) showPreview = true }
-            ),
+            .pointerInput(item.id) {
+                detectTapGestures(
+                    onTap = { onToggle() },
+                    onLongPress = { if (item.mimeType.startsWith("video/") && item.uri != null) showPreview = true }
+                )
+            },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
