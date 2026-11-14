@@ -4,7 +4,9 @@ import android.app.Application
 import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import androidx.core.content.FileProvider
@@ -319,10 +321,95 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             }
                         }
                     }
-                    MediaTab.DOCUMENTS, MediaTab.APPS -> {
-                        // Documents / Apps queried or picked via SAF
+                    MediaTab.DOCUMENTS -> {
+                        val collection = MediaStore.Files.getContentUri("external")
+                        val projection = arrayOf(
+                            MediaStore.Files.FileColumns._ID,
+                            MediaStore.Files.FileColumns.DISPLAY_NAME,
+                            MediaStore.Files.FileColumns.SIZE,
+                            MediaStore.Files.FileColumns.MIME_TYPE
+                        )
+                        val documentMimes = arrayOf(
+                            "application/pdf", "application/msword",
+                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            "application/vnd.ms-excel",
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            "application/vnd.ms-powerpoint",
+                            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                            "text/plain", "text/csv", "application/rtf"
+                        )
+                        val placeholders = documentMimes.joinToString(",") { "?" }
+                        contentResolver.query(
+                            collection, projection,
+                            "${MediaStore.Files.FileColumns.MIME_TYPE} IN ($placeholders)",
+                            documentMimes, "${MediaStore.Files.FileColumns.DATE_ADDED} DESC"
+                        )?.use { cursor ->
+                            val idCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                            val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                            val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+                            val mimeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
+                            var count = 0
+                            while (cursor.moveToNext() && count < 300) {
+                                val id = cursor.getLong(idCol)
+                                val uri = ContentUris.withAppendedId(collection, id)
+                                items.add(TransferItem(
+                                    id = "doc_$id",
+                                    name = cursor.getString(nameCol) ?: "Document_$id",
+                                    size = cursor.getLong(sizeCol),
+                                    mimeType = cursor.getString(mimeCol) ?: "application/octet-stream",
+                                    uri = uri
+                                ))
+                                count++
+                            }
+                        }
                     }
-                    else -> {}
+                    MediaTab.APPS -> {
+                        val pm = context.packageManager
+                        val apps = if (Build.VERSION.SDK_INT >= 33) {
+                            pm.getInstalledApplications(PackageManager.ApplicationInfoFlags.of(0))
+                        } else {
+                            @Suppress("DEPRECATION")
+                            pm.getInstalledApplications(0)
+                        }
+                        apps.asSequence()
+                            .filter { it.sourceDir != null && File(it.sourceDir).isFile }
+                            .sortedBy { pm.getApplicationLabel(it).toString().lowercase() }
+                            .take(300)
+                            .forEach { app ->
+                                val apk = File(app.sourceDir)
+                                val label = pm.getApplicationLabel(app).toString()
+                                items.add(TransferItem(
+                                    id = "app_${app.packageName}",
+                                    name = label,
+                                    size = apk.length(),
+                                    mimeType = "application/vnd.android.package-archive",
+                                    uri = Uri.fromFile(apk)
+                                ))
+                            }
+                    }
+                    MediaTab.ALL -> {
+                        val collections = listOf(
+                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI to "image",
+                            MediaStore.Video.Media.EXTERNAL_CONTENT_URI to "video",
+                            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI to "audio"
+                        )
+                        collections.forEach { (collection, kind) ->
+                            val projection = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.MIME_TYPE)
+                            contentResolver.query(collection, projection, null, null, "${MediaStore.MediaColumns.DATE_ADDED} DESC")?.use { cursor ->
+                                val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                                val nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                                val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                                val mimeCol = cursor.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE)
+                                var count = 0
+                                while (cursor.moveToNext() && count < 80) {
+                                    val id = cursor.getLong(idCol)
+                                    val mime = if (mimeCol >= 0) cursor.getString(mimeCol) ?: "${kind}/*" else "${kind}/*"
+                                    items.add(TransferItem(id = "${kind}_$id", name = cursor.getString(nameCol) ?: "${kind}_$id", size = cursor.getLong(sizeCol), mimeType = mime, uri = ContentUris.withAppendedId(collection, id)))
+                                    count++
+                                }
+                            }
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 Log.w("MainViewModel", "Media query failed: ${e.message}")
