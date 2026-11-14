@@ -104,8 +104,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun navigateTo(screen: Screen) {
         _currentScreen.value = screen
         if (screen == Screen.DISCOVERY) {
+            refreshNetworkState()
             discoveryManager.startDiscovery(asReceiver = false)
         } else if (screen == Screen.RECEIVER_WAITING) {
+            refreshNetworkState()
             discoveryManager.startDiscovery(asReceiver = true)
             startReceiverServer()
         } else {
