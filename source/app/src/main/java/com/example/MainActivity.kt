@@ -72,18 +72,27 @@ fun AppNavigation(viewModel: MainViewModel) {
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) {
         viewModel.refreshNetworkState()
+        viewModel.selectTab(viewModel.selectedTab.value)
     }
 
     LaunchedEffect(Unit) {
         val permissionsToRequest = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissionsToRequest.add(Manifest.permission.NEARBY_WIFI_DEVICES)
+            permissionsToRequest.add(Manifest.permission.READ_MEDIA_IMAGES)
+            permissionsToRequest.add(Manifest.permission.READ_MEDIA_VIDEO)
+            permissionsToRequest.add(Manifest.permission.READ_MEDIA_AUDIO)
+            if (Build.VERSION.SDK_INT >= 34) {
+                permissionsToRequest.add(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+            }
         } else {
             permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
+            permissionsToRequest.add(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
-        if (permissionsToRequest.isNotEmpty()) {
-            permissionLauncher.launch(permissionsToRequest.toTypedArray())
+        val missing = permissionsToRequest.filter {
+            ContextCompat.checkSelfPermission(viewModel.getApplication(), it) != PackageManager.PERMISSION_GRANTED
         }
+        if (missing.isNotEmpty()) permissionLauncher.launch(missing.toTypedArray())
     }
 
     // Handle System Back Press
