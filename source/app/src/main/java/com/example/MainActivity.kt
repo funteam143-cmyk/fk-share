@@ -132,6 +132,7 @@ fun AppNavigation(viewModel: MainViewModel) {
                 onFileToggled = { viewModel.toggleFileSelection(it) },
                 onFilesAdded = { viewModel.addFilesFromUris(it) },
                 onClearSelected = { viewModel.clearSelectedFiles() },
+                onRemoveSelected = { viewModel.removeSelectedFile(it) },
                 onBack = { viewModel.navigateTo(Screen.MAIN) },
                 onProceedToSend = { viewModel.navigateTo(Screen.DISCOVERY) }
             )
