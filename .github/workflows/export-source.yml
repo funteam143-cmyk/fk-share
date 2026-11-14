@@ -1,0 +1,29 @@
+name: Export FK Share source
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Extract source
+        run: |
+          set -e
+          rm -rf /tmp/fk-source source
+          mkdir -p /tmp/fk-source
+          unzip -q fk-share-source.zip -d /tmp/fk-source
+          mkdir -p source
+          cp -a /tmp/fk-source/. source/
+          find source -type d \( -name .git -o -name build -o -name .gradle \) -prune -exec rm -rf {} +
+          find source -type f | head -100
+      - name: Commit extracted source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add source
+          git commit -m "Export FK Share source for repair" || echo "No source changes"
+          git push
