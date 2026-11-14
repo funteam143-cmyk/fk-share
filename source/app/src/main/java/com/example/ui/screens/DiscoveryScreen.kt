@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiFind
 import androidx.compose.material3.AlertDialog
@@ -78,6 +79,13 @@ fun DiscoveryScreen(
 ) {
     var showDirectIpDialog by remember { mutableStateOf(false) }
     var directIpInput by remember { mutableStateOf("192.168.") }
+    val qrScannerLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+        result.contents?.let { raw ->
+            val payload = raw.removePrefix("FKSHARE|")
+            val ip = payload.substringBefore("|").substringBefore(":").trim()
+            if (ip.matches(Regex("""\\d{1,3}(\\.\\d{1,3}){3}"""))) onAddDirectPeer(ip)
+        }
+    }
 
     val totalBytes = selectedFiles.sumOf { it.size }
 
@@ -130,6 +138,20 @@ fun DiscoveryScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = {
+                            val options = ScanOptions().apply {
+                                setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                                setPrompt("Scan FK Share receiver QR code")
+                                setBeepEnabled(false)
+                                setOrientationLocked(false)
+                            }
+                            qrScannerLauncher.launch(options)
+                        },
+                        modifier = Modifier.testTag("scan_qr_button")
+                    ) {
+                        Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan QR code")
+                    }
                     IconButton(
                         onClick = { showDirectIpDialog = true },
                         modifier = Modifier.testTag("direct_ip_button")
