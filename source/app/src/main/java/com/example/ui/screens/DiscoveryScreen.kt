@@ -61,6 +61,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -81,16 +83,24 @@ fun DiscoveryScreen(
     onAddDirectPeer: (String, Int) -> Unit,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     var showDirectIpDialog by remember { mutableStateOf(false) }
     var directIpInput by remember { mutableStateOf("192.168.") }
     val qrScannerLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
-        result.contents?.let { raw ->
+        val raw = result.contents
+        if (raw == null) {
+            Toast.makeText(context, "QR scan cancelled", Toast.LENGTH_SHORT).show()
+        } else {
             val parts = raw.trim().split("|")
-            if (parts.size >= 3 && parts[0] == "FKSHARE") {
-                val ip = parts[1].trim()
-                val port = parts[2].toIntOrNull() ?: 52346
-                val validIp = ip.matches(Regex("""^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$"""))
-                if (validIp && port in 1..65535) onAddDirectPeer(ip, port)
+            val ip = parts.getOrNull(1)?.trim().orEmpty()
+            val port = parts.getOrNull(2)?.trim()?.toIntOrNull() ?: 52346
+            val isFkShareQr = parts.size >= 3 && parts[0].trim().equals("FKSHARE", ignoreCase = true)
+            val validIp = ip.matches(Regex("""^(25[0-5]|2[0-4]\\d|1?\\d?\\d)(\\.(25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}$"""))
+            if (isFkShareQr && validIp && port in 1..65535) {
+                Toast.makeText(context, "Receiver found. Connecting…", Toast.LENGTH_SHORT).show()
+                onAddDirectPeer(ip, port)
+            } else {
+                Toast.makeText(context, "Invalid FK Share QR code: $raw", Toast.LENGTH_LONG).show()
             }
         }
     }
