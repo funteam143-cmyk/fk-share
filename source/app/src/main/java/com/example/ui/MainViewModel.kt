@@ -396,7 +396,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
                                 val mimeCol = cursor.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE)
                                 var count = 0
-                                while (cursor.moveToNext() && count < 80) {
+                                while (cursor.moveToNext()) {
                                     val id = cursor.getLong(idCol)
                                     val mime = if (mimeCol >= 0) cursor.getString(mimeCol) ?: "${kind}/*" else "${kind}/*"
                                     items.add(TransferItem(id = "${kind}_$id", name = cursor.getString(nameCol) ?: "${kind}_$id", size = cursor.getLong(sizeCol), mimeType = mime, uri = ContentUris.withAppendedId(collection, id)))
