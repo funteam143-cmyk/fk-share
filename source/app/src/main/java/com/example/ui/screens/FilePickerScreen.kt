@@ -1,6 +1,10 @@
 package com.example.ui.screens
 
 import android.net.Uri
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.ActivityInfo
 import android.provider.ContactsContract
 import android.media.MediaMetadataRetriever
 import android.graphics.Bitmap
@@ -465,6 +469,7 @@ fun MediaGridItem(
 ) {
     var showPreview by remember(item.id) { mutableStateOf(false) }
     var showPhotoPreview by remember(item.id) { mutableStateOf(false) }
+    var previewLandscape by remember(item.id) { mutableStateOf(false) }
     val context = LocalContext.current
     val videoFrame by produceState<Bitmap?>(initialValue = null, key1 = item.uri) {
         if (item.mimeType.startsWith("video/") && item.uri != null) {
@@ -544,7 +549,7 @@ fun MediaGridItem(
             // Size badge
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
+                    .align(Alignment.TopStart)
                     .padding(6.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(Color.Black.copy(alpha = 0.6f))
@@ -589,14 +594,33 @@ fun MediaGridItem(
                             setOnPreparedListener { player -> player.isLooping = false; start() }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(220.dp)
+                    modifier = Modifier.fillMaxWidth().height(if (previewLandscape) 300.dp else 220.dp)
                 )
             },
             confirmButton = {
-                TextButton(onClick = { showPreview = false }) { Text("Close") }
+                Row {
+                    TextButton(onClick = {
+                        previewLandscape = !previewLandscape
+                        context.findActivity()?.requestedOrientation = if (previewLandscape)
+                            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                    }) { Text(if (previewLandscape) "Portrait" else "Rotate") }
+                    TextButton(onClick = {
+                        context.findActivity()?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        showPreview = false
+                    }) { Text("Close") }
+                }
             }
         )
     }
+}
+
+private fun Context.findActivity(): Activity? {
+    var current: Context = this
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        current = current.baseContext
+    }
+    return null
 }
 
 @Composable
