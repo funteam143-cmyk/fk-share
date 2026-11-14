@@ -458,8 +458,7 @@ fun MediaGridItem(
                             setOnPreparedListener { player -> player.isLooping = false; start() }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(220.dp),
-                    update = { view -> if (!view.isPlaying) view.start() }
+                    modifier = Modifier.fillMaxWidth().height(220.dp)
                 )
             },
             confirmButton = {
