@@ -86,7 +86,7 @@ fun DiscoveryScreen(
         result.contents?.let { raw ->
             val payload = raw.removePrefix("FKSHARE|")
             val ip = payload.substringBefore("|").substringBefore(":").trim()
-            if (ip.matches(Regex("""\\d{1,3}(\\.\\d{1,3}){3}"""))) onAddDirectPeer(ip)
+            if (ip.matches(Regex("""\d{1,3}(\.\d{1,3}){3}"""))) onAddDirectPeer(ip)
         }
     }
 
