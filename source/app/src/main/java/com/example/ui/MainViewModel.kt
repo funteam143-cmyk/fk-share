@@ -235,8 +235,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun connectToScannedPeer(ip: String, port: Int = NetworkUtils.DEFAULT_TRANSFER_PORT) {
-        discoveryManager.addDirectPeer(ip, port)
-        val peer = discoveryManager.peers.value.firstOrNull { it.hostAddress == ip } ?: return
+        // Start directly from QR data; do not depend on an asynchronous peer-list update.
+        if (ip.isBlank() || port !in 1..65535 || _selectedFiles.value.isEmpty()) {
+            Log.w("FKShare", "QR connection ignored: invalid address/port or no selected files")
+            return
+        }
+        val peer = PeerDevice(
+            id = "qr_${ip.replace(".", "_")}_$port",
+            name = "FK Share Receiver",
+            hostAddress = ip,
+            port = port,
+            connectionType = com.example.data.model.ConnectionType.HOTSPOT
+        )
         connectAndSend(peer)
     }
 
