@@ -230,8 +230,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun addDirectPeer(ip: String) {
-        discoveryManager.addDirectPeer(ip)
+    fun addDirectPeer(ip: String, port: Int = NetworkUtils.DEFAULT_TRANSFER_PORT) {
+        discoveryManager.addDirectPeer(ip, port)
     }
 
     private fun loadLocalMedia(tab: MediaTab) {
