@@ -8,6 +8,7 @@ import android.content.pm.ActivityInfo
 import android.provider.ContactsContract
 import android.media.MediaMetadataRetriever
 import android.graphics.Bitmap
+import java.io.File
 import android.widget.MediaController
 import android.widget.VideoView
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -135,7 +136,15 @@ fun FilePickerScreen(
             }.getOrNull()
             if (!lookupKey.isNullOrBlank()) {
                 val vcardUri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_VCARD_URI, lookupKey)
-                onFilesAdded(listOf(vcardUri))
+                runCatching {
+                    val vcardFile = File(context.cacheDir, "contact_${System.currentTimeMillis()}.vcf")
+                    context.contentResolver.openInputStream(vcardUri)?.use { input ->
+                        vcardFile.outputStream().use { output -> input.copyTo(output) }
+                    }
+                    if (vcardFile.exists() && vcardFile.length() > 0L) {
+                        onFilesAdded(listOf(Uri.fromFile(vcardFile)))
+                    }
+                }
             }
         }
     }
