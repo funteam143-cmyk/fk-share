@@ -142,7 +142,7 @@ fun AppNavigation(viewModel: MainViewModel) {
                 peers = peers,
                 selectedFiles = selectedFiles,
                 onConnectPeer = { peer -> viewModel.connectAndSend(peer) },
-                onAddDirectPeer = { ip, port -> viewModel.addDirectPeer(ip, port) },
+                onAddDirectPeer = { ip, port -> viewModel.connectToScannedPeer(ip, port) },
                 onBack = { viewModel.navigateTo(Screen.FILE_PICKER) }
             )
         }
