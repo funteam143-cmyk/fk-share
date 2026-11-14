@@ -234,6 +234,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         discoveryManager.addDirectPeer(ip, port)
     }
 
+    fun connectToScannedPeer(ip: String, port: Int = NetworkUtils.DEFAULT_TRANSFER_PORT) {
+        discoveryManager.addDirectPeer(ip, port)
+        val peer = discoveryManager.peers.value.firstOrNull { it.hostAddress == ip } ?: return
+        connectAndSend(peer)
+    }
+
     private fun loadLocalMedia(tab: MediaTab) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoadingMedia.value = true
