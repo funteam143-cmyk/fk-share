@@ -1,10 +1,13 @@
 package com.example.ui.screens
 
 import android.net.Uri
+import android.widget.MediaController
+import android.widget.VideoView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +41,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -53,8 +57,12 @@ import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,6 +71,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.runtime.remember
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -375,11 +384,15 @@ fun MediaGridItem(
     isSelected: Boolean,
     onToggle: () -> Unit
 ) {
+    var showPreview by remember(item.id) { mutableStateOf(false) }
     Card(
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier
             .size(110.dp)
-            .clickable(onClick = onToggle),
+            .combinedClickable(
+                onClick = onToggle,
+                onLongClick = { if (item.mimeType.startsWith("video/") && item.uri != null) showPreview = true }
+            ),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -430,6 +443,29 @@ fun MediaGridItem(
                 )
             }
         }
+    }
+
+    if (showPreview && item.uri != null) {
+        AlertDialog(
+            onDismissRequest = { showPreview = false },
+            title = { Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            text = {
+                AndroidView(
+                    factory = { context ->
+                        VideoView(context).apply {
+                            setVideoURI(item.uri)
+                            setMediaController(MediaController(context).also { it.setAnchorView(this) })
+                            setOnPreparedListener { player -> player.isLooping = false; start() }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(220.dp),
+                    update = { view -> if (!view.isPlaying) view.start() }
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showPreview = false }) { Text("Close") }
+            }
+        )
     }
 }
 
