@@ -89,7 +89,7 @@ fun DiscoveryScreen(
             if (parts.size >= 3 && parts[0] == "FKSHARE") {
                 val ip = parts[1].trim()
                 val port = parts[2].toIntOrNull() ?: 52346
-                val validIp = ip.matches(Regex("""^(25[0-5]|2[0-4]\d|1?\d?\d)(\\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$"""))
+                val validIp = ip.matches(Regex("""^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$"""))
                 if (validIp && port in 1..65535) onAddDirectPeer(ip, port)
             }
         }
