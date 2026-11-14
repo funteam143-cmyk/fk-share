@@ -78,16 +78,20 @@ fun DiscoveryScreen(
     peers: List<PeerDevice>,
     selectedFiles: List<TransferItem>,
     onConnectPeer: (PeerDevice) -> Unit,
-    onAddDirectPeer: (String) -> Unit,
+    onAddDirectPeer: (String, Int) -> Unit,
     onBack: () -> Unit
 ) {
     var showDirectIpDialog by remember { mutableStateOf(false) }
     var directIpInput by remember { mutableStateOf("192.168.") }
     val qrScannerLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
         result.contents?.let { raw ->
-            val payload = raw.removePrefix("FKSHARE|")
-            val ip = payload.substringBefore("|").substringBefore(":").trim()
-            if (ip.matches(Regex("""\d{1,3}(\.\d{1,3}){3}"""))) onAddDirectPeer(ip)
+            val parts = raw.trim().split("|")
+            if (parts.size >= 3 && parts[0] == "FKSHARE") {
+                val ip = parts[1].trim()
+                val port = parts[2].toIntOrNull() ?: 52346
+                val validIp = ip.matches(Regex("""^(25[0-5]|2[0-4]\\d|1?\\d?\\d)(\\.(25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}$"""))
+                if (validIp && port in 1..65535) onAddDirectPeer(ip, port)
+            }
         }
     }
 
@@ -233,7 +237,7 @@ fun DiscoveryScreen(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "Ensure receiver tapped 'Receive' or is on same Wi-Fi / Hotspot",
+                text = "Both phones must be on the same Wi-Fi / hotspot network for this QR connection",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
