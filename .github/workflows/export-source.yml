@@ -1,5 +1,9 @@
 name: Export FK Share source
 on:
+  push:
+    paths:
+      - 'fk-share-source.zip'
+      - '.github/workflows/export-source.yml'
   workflow_dispatch:
 permissions:
   contents: write
