@@ -233,11 +233,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun loadLocalMedia(tab: MediaTab) {
-        if (tab == MediaTab.ALL) {
-            _scannedMedia.value = emptyList()
-            return
-        }
-
         viewModelScope.launch(Dispatchers.IO) {
             _isLoadingMedia.value = true
             val items = mutableListOf<TransferItem>()
