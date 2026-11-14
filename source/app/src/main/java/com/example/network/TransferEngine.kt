@@ -83,9 +83,23 @@ class TransferEngine(
                 while (isActive && !isCancelled) {
                     val socket = serverSocket?.accept() ?: break
                     activeSocket = socket
-                    configureSocket(socket)
-                    handleIncomingTransfer(socket, onTransferComplete)
-                    break
+                    try {
+                        configureSocket(socket)
+                        handleIncomingTransfer(socket, onTransferComplete)
+                        if (_progressState.value.sessionState == SessionState.COMPLETED) break
+                    } catch (connectionError: Exception) {
+                        Log.w(TAG, "Rejected/failed incoming connection; receiver remains available: ${connectionError.message}")
+                        if (!isCancelled) {
+                            _progressState.value = _progressState.value.copy(
+                                sessionState = SessionState.WAITING_ACCEPTANCE,
+                                errorMessage = null,
+                                pendingProposal = null
+                            )
+                        }
+                    } finally {
+                        closeQuietly(socket)
+                        activeSocket = null
+                    }
                 }
             } catch (e: Exception) {
                 if (!isCancelled) {
