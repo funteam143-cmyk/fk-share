@@ -17,33 +17,25 @@ object NetworkUtils {
      * Resolves the primary local IPv4 address of the active Wi-Fi or Hotspot interface.
      */
     fun getLocalIpAddress(): String? {
-        try {
-            val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
-            // Prioritize Wi-Fi and P2P interfaces (wlan0, p2p0, ap0)
-            for (intf in interfaces.sortedByDescending { isPreferredInterface(it.name) }) {
-                if (!intf.isUp || intf.isLoopback) continue
-                val addresses = Collections.list(intf.inetAddresses)
-                for (addr in addresses) {
-                    if (!addr.isLoopbackAddress && addr is Inet4Address) {
-                        val host = addr.hostAddress ?: continue
-                        if (!host.startsWith("127.")) {
-                            return host
-                        }
-                    }
-                }
+        return try {
+            preferredWifiInterface()?.inetAddresses?.let { addresses ->
+                Collections.list(addresses).filterIsInstance<Inet4Address>()
+                    .firstOrNull { !it.isLoopbackAddress && !it.hostAddress.orEmpty().startsWith("169.254.") }
+                    ?.hostAddress
             }
-        } catch (_: Exception) {}
-        return null
+        } catch (_: Exception) { null }
     }
 
-    private fun isPreferredInterface(name: String): Int {
+    private fun preferredWifiInterface(): NetworkInterface? {
+        val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
+            .filter { it.isUp && !it.isLoopback && isWifiOrP2pInterface(it.name) }
+        return interfaces.sortedByDescending { isPreferredInterface(it.name) }.firstOrNull()
+    }
+
+    private fun isWifiOrP2pInterface(name: String): Boolean {
         val lower = name.lowercase(Locale.ROOT)
-        return when {
-            lower.contains("wlan") -> 4
-            lower.contains("ap") || lower.contains("swlan") -> 3
-            lower.contains("p2p") -> 2
-            else -> 0
-        }
+        return lower.contains("wlan") || lower.contains("swlan") ||
+            lower.startsWith("ap") || lower.contains("p2p") || lower.contains("wifi")
     }
 
     /**
@@ -66,16 +58,9 @@ object NetworkUtils {
      */
     fun getBroadcastAddress(): InetAddress {
         try {
-            val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
-            for (intf in interfaces.sortedByDescending { isPreferredInterface(it.name) }) {
-                if (intf.isLoopback || !intf.isUp) continue
-                for (intfAddr in intf.interfaceAddresses) {
-                    val broadcast = intfAddr.broadcast
-                    if (broadcast != null && broadcast is Inet4Address) {
-                        return broadcast
-                    }
-                }
-            }
+            val broadcast = preferredWifiInterface()?.interfaceAddresses
+                ?.mapNotNull { it.broadcast as? Inet4Address }?.firstOrNull()
+            if (broadcast != null) return broadcast
         } catch (_: Exception) {}
         return InetAddress.getByName("255.255.255.255")
     }
