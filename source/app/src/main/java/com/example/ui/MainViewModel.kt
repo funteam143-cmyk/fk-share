@@ -367,7 +367,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             pm.getInstalledApplications(0)
                         }
                         apps.asSequence()
-                            .filter { it.sourceDir != null && File(it.sourceDir).isFile }
+                            .filter { app -> app.sourceDir != null && File(app.sourceDir).isFile && (app.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 }
                             .sortedBy { pm.getApplicationLabel(it).toString().lowercase() }
                             .toList()
                             .forEach { app ->
