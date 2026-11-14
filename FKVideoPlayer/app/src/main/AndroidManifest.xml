@@ -1,14 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <application
-        android:icon="@drawable/fk_icon"
-        android:roundIcon="@drawable/fk_icon"
+        android:icon="@drawable/apna_icon"
+        android:roundIcon="@drawable/apna_icon"
         android:theme="@style/AppTheme"
-        android:label="FK Video Player"
+        android:label="Apna Video Player"
         android:allowBackup="true"
         android:supportsRtl="true">
-        <activity android:name=".PlayerActivity" android:screenOrientation="unspecified" />
+        <activity android:name=".PlayerActivity" android:screenOrientation="unspecified" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
