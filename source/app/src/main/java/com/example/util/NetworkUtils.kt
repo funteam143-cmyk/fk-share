@@ -39,9 +39,9 @@ object NetworkUtils {
     private fun isPreferredInterface(name: String): Int {
         val lower = name.lowercase(Locale.ROOT)
         return when {
-            lower.contains("p2p") -> 3
-            lower.contains("wlan") -> 2
-            lower.contains("ap") || lower.contains("swlan") -> 1
+            lower.contains("wlan") -> 4
+            lower.contains("ap") || lower.contains("swlan") -> 3
+            lower.contains("p2p") -> 2
             else -> 0
         }
     }
@@ -67,7 +67,7 @@ object NetworkUtils {
     fun getBroadcastAddress(): InetAddress {
         try {
             val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
-            for (intf in interfaces) {
+            for (intf in interfaces.sortedByDescending { isPreferredInterface(it.name) }) {
                 if (intf.isLoopback || !intf.isUp) continue
                 for (intfAddr in intf.interfaceAddresses) {
                     val broadcast = intfAddr.broadcast
