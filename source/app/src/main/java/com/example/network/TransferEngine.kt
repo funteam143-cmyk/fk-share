@@ -34,6 +34,7 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.security.MessageDigest
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicLong
 
 class TransferEngine(
     private val context: Context,
@@ -230,7 +231,7 @@ class TransferEngine(
         )
 
         val updatedItems = files.toMutableList()
-        var overallTransferred = 0L
+        val overallTransferred = AtomicLong(0L)
         val startTime = System.nanoTime()
         var lastWindowTime = startTime
         var lastWindowBytes = 0L
@@ -242,25 +243,26 @@ class TransferEngine(
                 val now = System.nanoTime()
                 val windowDurationSec = (now - lastWindowTime) / 1_000_000_000.0
                 if (windowDurationSec >= 0.25) {
-                    val bytesInWindow = overallTransferred - lastWindowBytes
+                    val transferredNow = overallTransferred.get()
+                    val bytesInWindow = transferredNow - lastWindowBytes
                     val currentSpeed = (bytesInWindow / (1024.0 * 1024.0)) / windowDurationSec
                     if (currentSpeed > peakSpeed) peakSpeed = currentSpeed
 
                     val totalDurationSec = (now - startTime) / 1_000_000_000.0
                     val avgSpeed = if (totalDurationSec > 0) {
-                        (overallTransferred / (1024.0 * 1024.0)) / totalDurationSec
+                        (transferredNow / (1024.0 * 1024.0)) / totalDurationSec
                     } else 0.0
 
-                    val remainingBytes = (totalBytes - overallTransferred).coerceAtLeast(0L)
+                    val remainingBytes = (totalBytes - transferredNow).coerceAtLeast(0L)
                     val remainingSec = if (currentSpeed > 0.05) {
                         (remainingBytes / (currentSpeed * 1024.0 * 1024.0)).toLong()
                     } else 0L
 
                     lastWindowTime = now
-                    lastWindowBytes = overallTransferred
+                    lastWindowBytes = transferredNow
 
                     _progressState.value = _progressState.value.copy(
-                        totalTransferredBytes = overallTransferred,
+                        totalTransferredBytes = transferredNow,
                         currentSpeedMBps = currentSpeed,
                         peakSpeedMBps = peakSpeed,
                         averageSpeedMBps = avgSpeed,
@@ -312,7 +314,7 @@ class TransferEngine(
                         out.write(buffer, 0, bytesRead)
                         digest.update(buffer, 0, bytesRead)
                         fileTransferred += bytesRead
-                        overallTransferred += bytesRead
+                        overallTransferred.addAndGet(bytesRead.toLong())
 
                         val itemProgress = if (item.size > 0) (fileTransferred.toFloat() / item.size) else 1f
                         updatedItems[i] = updatedItems[i].copy(
@@ -356,12 +358,12 @@ class TransferEngine(
             speedTracker.cancel()
             val finalDuration = (System.nanoTime() - startTime) / 1_000_000_000.0
             val finalAvgSpeed = if (finalDuration > 0) {
-                (overallTransferred / (1024.0 * 1024.0)) / finalDuration
+                (overallTransferred.get() / (1024.0 * 1024.0)) / finalDuration
             } else 0.0
 
             val finalState = _progressState.value.copy(
                 sessionState = if (isCancelled) SessionState.CANCELLED else SessionState.COMPLETED,
-                totalTransferredBytes = overallTransferred,
+                totalTransferredBytes = overallTransferred.get(),
                 averageSpeedMBps = finalAvgSpeed,
                 currentSpeedMBps = 0.0,
                 remainingSeconds = 0L,
