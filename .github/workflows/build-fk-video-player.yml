@@ -1,4 +1,4 @@
-name: Build FK Video Player APK
+name: Build Apna Video Player APK
 
 on:
   workflow_dispatch:
@@ -26,6 +26,6 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: FKVideoPlayer-debug
+          name: ApnaVideoPlayer-debug
           path: FKVideoPlayer/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
