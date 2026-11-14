@@ -62,6 +62,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.remember
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -437,6 +439,12 @@ fun MediaListRow(
     isSelected: Boolean,
     onToggle: () -> Unit
 ) {
+    val context = LocalContext.current
+    val appIcon = remember(item.id) {
+        if (item.mimeType == "application/vnd.android.package-archive") {
+            runCatching { context.packageManager.getApplicationIcon(item.id.removePrefix("app_")) }.getOrNull()
+        } else null
+    }
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -461,12 +469,16 @@ fun MediaListRow(
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Description,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
-                )
+                if (appIcon != null) {
+                    AsyncImage(model = appIcon, contentDescription = item.name, modifier = Modifier.fillMaxSize())
+                } else {
+                    Icon(
+                        imageVector = if (item.mimeType.startsWith("audio/")) Icons.Default.Audiotrack else Icons.Default.Description,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
