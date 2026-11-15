@@ -95,7 +95,7 @@ fun DiscoveryScreen(
             val ip = parts.getOrNull(1)?.trim().orEmpty()
             val port = parts.getOrNull(2)?.trim()?.toIntOrNull() ?: 52346
             val isFkShareQr = parts.size >= 3 && parts[0].trim().equals("FKSHARE", ignoreCase = true)
-            val validIp = ip.matches(Regex("""^(25[0-5]|2[0-4]\\d|1?\\d?\\d)(\\.(25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}$"""))
+            val validIp = ip.matches(Regex("""^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$"""))
             if (isFkShareQr && validIp && port in 1..65535) {
                 Toast.makeText(context, "Receiver found. Connecting…", Toast.LENGTH_SHORT).show()
                 onAddDirectPeer(ip, port)
