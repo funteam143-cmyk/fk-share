@@ -218,6 +218,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun connectToScannedPeer(ip: String, port: Int = NetworkUtils.DEFAULT_TRANSFER_PORT) {
+        Log.w("FKShare", "IP-based QR transfer is disabled; select the receiver from Nearby devices instead")
+    }
+
     private fun loadLocalMedia(tab: MediaTab) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoadingMedia.value = true
