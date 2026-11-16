@@ -77,7 +77,6 @@ class NearbyTransferManager(private val context: Context, private val scope: Cor
                         val i = items.indexOfFirst { it.name == name && it.status != TransferStatus.COMPLETED }
                         if (i >= 0) items[i] = items[i].copy(status = TransferStatus.COMPLETED, progress = 1f, localUri = Uri.fromFile(output))
                         _progress.value = _progress.value.copy(items = items, totalTransferredBytes = items.sumOf { it.size })
-                        if (receivedCount >= incomingCount && incomingCount > 0) complete()
                     } catch (e: Exception) { fail("Saving " + name + " failed: " + e.message) }
                 }
             }
