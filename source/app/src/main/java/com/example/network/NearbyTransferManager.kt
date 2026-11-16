@@ -64,8 +64,9 @@ class NearbyTransferManager(private val context: Context, private val scope: Cor
                 }
             } else if (payload.type == Payload.Type.FILE) {
                 val filePayload = payload.asFile() ?: return
-                val name = StorageHelper.sanitizeFileName(filePayload.fileName ?: "received_file")
-                val uri = filePayload.asUri()
+                val index = receivedCount
+                val name = StorageHelper.sanitizeFileName(_progress.value.items.getOrNull(index)?.name ?: "received_file")
+                val uri = filePayload.asUri() ?: run { fail("Nearby payload has no readable file URI"); return }
                 scope.launch(Dispatchers.IO) {
                     try {
                         val output = StorageHelper.createReceivedFile(context, name)
@@ -131,7 +132,7 @@ class NearbyTransferManager(private val context: Context, private val scope: Cor
         client.startDiscovery(SERVICE_ID, object : EndpointDiscoveryCallback() {
             override fun onEndpointFound(id: String, info: DiscoveredEndpointInfo) {
                 _peers.value = _peers.value.filterNot { it.id == id } +
-                    PeerDevice(id, info.endpointName, "", connectionType = ConnectionType.WIFI_DIRECT)
+                    PeerDevice(id, info.endpointName, "", connectionType = com.example.data.model.ConnectionType.WIFI_DIRECT)
             }
             override fun onEndpointLost(id: String) { _peers.value = _peers.value.filterNot { it.id == id } }
         }, DiscoveryOptions.Builder().setStrategy(Strategy.P2P_POINT_TO_POINT).build())
