@@ -104,16 +104,22 @@ fun AppNavigation(viewModel: MainViewModel) {
     // only when the user opens the phone-connection screen.
     LaunchedEffect(currentScreen) {
         if (currentScreen == Screen.DISCOVERY) {
-            val nearbyPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                Manifest.permission.NEARBY_WIFI_DEVICES
-            } else {
-                Manifest.permission.ACCESS_FINE_LOCATION
+            val nearbyPermissions = mutableListOf<String>()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                nearbyPermissions.add(Manifest.permission.BLUETOOTH_SCAN)
+                nearbyPermissions.add(Manifest.permission.BLUETOOTH_ADVERTISE)
+                nearbyPermissions.add(Manifest.permission.BLUETOOTH_CONNECT)
             }
-            if (ContextCompat.checkSelfPermission(context, nearbyPermission) != PackageManager.PERMISSION_GRANTED) {
-                permissionLauncher.launch(arrayOf(nearbyPermission))
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                nearbyPermissions.add(Manifest.permission.NEARBY_WIFI_DEVICES)
             } else {
-                viewModel.refreshNetworkState()
+                nearbyPermissions.add(Manifest.permission.ACCESS_FINE_LOCATION)
             }
+            val missingNearby = nearbyPermissions.filter {
+                ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+            }
+            if (missingNearby.isNotEmpty()) permissionLauncher.launch(missingNearby.toTypedArray())
+            else viewModel.refreshNetworkState()
         }
     }
 
