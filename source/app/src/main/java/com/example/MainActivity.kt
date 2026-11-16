@@ -103,7 +103,7 @@ fun AppNavigation(viewModel: MainViewModel) {
     // Ask for the Android permission needed for nearby Wi-Fi discovery
     // only when the user opens the phone-connection screen.
     LaunchedEffect(currentScreen) {
-        if (currentScreen == Screen.DISCOVERY) {
+        if (currentScreen == Screen.DISCOVERY || currentScreen == Screen.RECEIVER_WAITING) {
             val nearbyPermissions = mutableListOf<String>()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 nearbyPermissions.add(Manifest.permission.BLUETOOTH_SCAN)
