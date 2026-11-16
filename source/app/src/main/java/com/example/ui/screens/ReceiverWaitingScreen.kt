@@ -208,7 +208,7 @@ fun ReceiverWaitingScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Local IP: $localIp (Port 52346)",
+                            text = "Nearby offline connection is ready",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -228,7 +228,7 @@ fun ReceiverWaitingScreen(
                     }
                 }.getOrNull()
             }
-            if (qrBitmap != null) {
+            if (false && qrBitmap != null) {
                 Image(
                     bitmap = qrBitmap.asImageBitmap(),
                     contentDescription = "Receiver connection QR code",
