@@ -100,6 +100,7 @@ dependencies {
   implementation(libs.androidx.room.runtime)
   implementation(libs.coil.compose)
   implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+  implementation("com.google.android.gms:play-services-nearby:19.3.0")
   // implementation(libs.converter.moshi)
   // implementation(libs.firebase.ai)
   // implementation(libs.firebase.firestore)
