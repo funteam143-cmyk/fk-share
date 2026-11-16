@@ -99,8 +99,12 @@ class NearbyTransferManager(private val context: Context, private val scope: Cor
                 if (i in items.indices) items[i] = items[i].copy(status = TransferStatus.COMPLETED, progress = 1f, transferredBytes = items[i].size)
                 _progress.value = _progress.value.copy(items = items, totalTransferredBytes = items.sumOf { it.transferredBytes })
                 if (payloadIndexes.isEmpty() && items.isNotEmpty()) {
-                    endpoint?.let { client.sendPayload(it, Payload.fromBytes(JSONObject().put("kind", "done").toString().toByteArray())) }
-                    complete()
+                    val target = endpoint
+                    if (target != null) {
+                        client.sendPayload(target, Payload.fromBytes(JSONObject().put("kind", "done").toString().toByteArray()))
+                            .addOnSuccessListener { complete() }
+                            .addOnFailureListener { fail("Final transfer acknowledgement failed: " + it.message) }
+                    } else complete()
                 }
             }
         }
