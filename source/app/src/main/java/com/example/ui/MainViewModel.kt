@@ -21,8 +21,7 @@ import com.example.data.model.TransferItem
 import com.example.data.model.TransferProgressState
 import com.example.data.model.TransferProposal
 import com.example.data.model.TransferStatus
-import com.example.network.P2pDiscoveryManager
-import com.example.network.TransferEngine
+import com.example.network.NearbyTransferManager
 import com.example.util.NetworkUtils
 import com.example.util.StorageHelper
 import kotlinx.coroutines.Dispatchers
@@ -62,11 +61,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val allRecords: StateFlow<List<TransferRecord>> = repository.allRecords
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val discoveryManager = P2pDiscoveryManager(application, viewModelScope)
-    val transferEngine = TransferEngine(application, viewModelScope)
+    val nearbyManager = NearbyTransferManager(application, viewModelScope)
 
-    val peers: StateFlow<List<PeerDevice>> = discoveryManager.peers
-    val transferProgress: StateFlow<TransferProgressState> = transferEngine.progressState
+    val peers: StateFlow<List<PeerDevice>> = nearbyManager.peers
+    val transferProgress: StateFlow<TransferProgressState> = nearbyManager.progress
 
     private val _currentScreen = MutableStateFlow(Screen.MAIN)
     val currentScreen: StateFlow<Screen> = _currentScreen.asStateFlow()
@@ -105,14 +103,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _currentScreen.value = screen
         if (screen == Screen.DISCOVERY) {
             refreshNetworkState()
-            discoveryManager.startDiscovery(asReceiver = false)
+            nearbyManager.startDiscovery()
         } else if (screen == Screen.RECEIVER_WAITING) {
             refreshNetworkState()
-            discoveryManager.startDiscovery(asReceiver = true)
-            startReceiverServer()
+            nearbyManager.startReceiver()
         } else {
             if (_currentScreen.value != Screen.TRANSFER) {
-                discoveryManager.stopDiscovery()
+                nearbyManager.stopDiscovery()
             }
         }
     }
@@ -165,42 +162,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun connectAndSend(peer: PeerDevice) {
-        val filesToSend = _selectedFiles.value
-        if (filesToSend.isEmpty()) return
-
-        discoveryManager.stopDiscovery()
+        val files = _selectedFiles.value
+        if (files.isEmpty()) return
+        nearbyManager.stopDiscovery()
         _currentScreen.value = Screen.TRANSFER
-
-        transferEngine.startSender(
-            targetHost = peer.hostAddress,
-            targetPort = peer.port,
-            peerDeviceName = peer.name,
-            selectedFiles = filesToSend,
-            onTransferComplete = { finalState ->
-                onTransferFinished(finalState)
-            }
-        )
-    }
-
-    private fun startReceiverServer() {
-        transferEngine.startReceiver { finalState ->
-            onTransferFinished(finalState)
-        }
+        nearbyManager.connectAndSend(peer, files)
     }
 
     fun acceptIncomingTransfer() {
-        transferEngine.respondToProposal(true)
+        nearbyManager.respondToProposal(true)
         _currentScreen.value = Screen.TRANSFER
     }
 
     fun declineIncomingTransfer() {
-        transferEngine.respondToProposal(false)
+        nearbyManager.respondToProposal(false)
         _currentScreen.value = Screen.MAIN
     }
 
-    fun cancelActiveTransfer() {
-        transferEngine.cancelActiveTransfer()
-    }
+    fun cancelActiveTransfer() { nearbyManager.cancelActiveTransfer() }
 
     private fun onTransferFinished(state: TransferProgressState) {
         _lastCompletedTransfer.value = state
@@ -228,26 +207,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.clearHistory()
         }
-    }
-
-    fun addDirectPeer(ip: String, port: Int = NetworkUtils.DEFAULT_TRANSFER_PORT) {
-        discoveryManager.addDirectPeer(ip, port)
-    }
-
-    fun connectToScannedPeer(ip: String, port: Int = NetworkUtils.DEFAULT_TRANSFER_PORT) {
-        // Start directly from QR data; do not depend on an asynchronous peer-list update.
-        if (ip.isBlank() || port !in 1..65535 || _selectedFiles.value.isEmpty()) {
-            Log.w("FKShare", "QR connection ignored: invalid address/port or no selected files")
-            return
-        }
-        val peer = PeerDevice(
-            id = "qr_${ip.replace(".", "_")}_$port",
-            name = "FK Share Receiver",
-            hostAddress = ip,
-            port = port,
-            connectionType = com.example.data.model.ConnectionType.HOTSPOT
-        )
-        connectAndSend(peer)
     }
 
     private fun loadLocalMedia(tab: MediaTab) {
