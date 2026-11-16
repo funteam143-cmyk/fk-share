@@ -78,7 +78,13 @@ fun AppNavigation(viewModel: MainViewModel) {
         viewModel.refreshNetworkState()
         viewModel.selectTab(viewModel.selectedTab.value)
         if (results.values.any { !it }) {
-            Toast.makeText(context, "Nearby Wi-Fi permission is needed to connect phones. Allow it in App Settings.", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Bluetooth and Nearby permissions are needed to connect phones.", Toast.LENGTH_LONG).show()
+        } else {
+            when (viewModel.currentScreen.value) {
+                Screen.DISCOVERY -> viewModel.nearbyManager.startDiscovery()
+                Screen.RECEIVER_WAITING -> viewModel.nearbyManager.startReceiver()
+                else -> Unit
+            }
         }
     }
 
