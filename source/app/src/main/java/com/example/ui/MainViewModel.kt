@@ -93,6 +93,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         refreshNetworkState()
         loadLocalMedia(MediaTab.PHOTOS)
+        viewModelScope.launch {
+            var previousState: SessionState? = null
+            nearbyManager.progress.collect { state ->
+                if (state.sessionState == SessionState.COMPLETED && previousState != SessionState.COMPLETED) {
+                    onTransferFinished(state)
+                }
+                previousState = state.sessionState
+            }
+        }
     }
 
     fun refreshNetworkState() {
