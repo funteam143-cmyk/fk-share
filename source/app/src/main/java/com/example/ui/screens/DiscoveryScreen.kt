@@ -247,7 +247,7 @@ fun DiscoveryScreen(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "Both phones must be on the same Wi-Fi / hotspot network for this QR connection",
+                text = "Nearby uses Bluetooth and Wi-Fi directly; no internet or hotspot setup is needed",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
