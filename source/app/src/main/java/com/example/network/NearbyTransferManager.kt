@@ -3,6 +3,7 @@ package com.example.network
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import android.os.SystemClock
 import com.example.data.model.*
 import com.example.util.NetworkUtils
 import com.example.util.StorageHelper
@@ -33,6 +34,10 @@ class NearbyTransferManager(private val context: Context, private val scope: Cor
     private var receivedCount = 0
     private val payloadIndexes = ConcurrentHashMap<Long, Int>()
     private val tempFiles = ConcurrentHashMap<Long, File>()
+    private val lastPayloadBytes = ConcurrentHashMap<Long, Long>()
+    private var lastSpeedSampleAt = 0L
+    private var transferStartedAt = 0L
+    private var speedTotalBytes = 0L
 
     private fun fail(message: String) {
         Log.e(TAG, message)
@@ -65,6 +70,7 @@ class NearbyTransferManager(private val context: Context, private val scope: Cor
             } else if (payload.type == Payload.Type.FILE) {
                 val filePayload = payload.asFile() ?: return
                 val index = receivedCount
+                payloadIndexes[payload.id] = index
                 val name = StorageHelper.sanitizeFileName(_progress.value.items.getOrNull(index)?.name ?: "received_file")
                 val uri = filePayload.asUri() ?: run { fail("Nearby payload has no readable file URI"); return }
                 scope.launch(Dispatchers.IO) {
@@ -84,21 +90,46 @@ class NearbyTransferManager(private val context: Context, private val scope: Cor
         }
 
         override fun onPayloadTransferUpdate(endpointId: String, update: PayloadTransferUpdate) {
-            if (update.status == PayloadTransferUpdate.Status.FAILURE) fail("Nearby payload transfer failed")
+            if (update.status == PayloadTransferUpdate.Status.FAILURE) {
+                lastPayloadBytes.remove(update.payloadId)
+                fail("Nearby payload transfer failed")
+                return
+            }
             if (update.status == PayloadTransferUpdate.Status.IN_PROGRESS) {
-                val i = payloadIndexes[update.payloadId] ?: return
+                val now = SystemClock.elapsedRealtime()
+                if (transferStartedAt == 0L) {
+                    transferStartedAt = now
+                    lastSpeedSampleAt = now
+                }
+                val previous = lastPayloadBytes.put(update.payloadId, update.bytesTransferred) ?: 0L
+                val delta = (update.bytesTransferred - previous).coerceAtLeast(0L)
+                val interval = (now - lastSpeedSampleAt).coerceAtLeast(1L)
+                speedTotalBytes += delta
+                val instantSpeed = if (delta > 0L) delta.toDouble() / interval.toDouble() * 1000.0 / (1024.0 * 1024.0) else 0.0
+                val elapsed = ((now - transferStartedAt) / 1000L).coerceAtLeast(1L)
+                val average = speedTotalBytes.toDouble() / elapsed.toDouble() / (1024.0 * 1024.0)
                 val items = _progress.value.items.toMutableList()
-                if (i in items.indices) items[i] = items[i].copy(status = TransferStatus.TRANSFERRING,
-                    progress = if (update.totalBytes > 0) update.bytesTransferred.toFloat() / update.totalBytes else 0f,
-                    transferredBytes = update.bytesTransferred)
-                _progress.value = _progress.value.copy(items = items, totalTransferredBytes = items.sumOf { it.transferredBytes })
+                val i = payloadIndexes[update.payloadId]
+                if (i != null && i in items.indices) {
+                    items[i] = items[i].copy(status = TransferStatus.TRANSFERRING,
+                        progress = if (update.totalBytes > 0) update.bytesTransferred.toFloat() / update.totalBytes else 0f,
+                        transferredBytes = update.bytesTransferred)
+                }
+                val total = if (items.isNotEmpty()) items.sumOf { it.transferredBytes }.coerceAtLeast(speedTotalBytes) else speedTotalBytes
+                _progress.value = _progress.value.copy(items = items, totalTransferredBytes = total,
+                    currentSpeedMBps = instantSpeed, peakSpeedMBps = maxOf(_progress.value.peakSpeedMBps, instantSpeed),
+                    averageSpeedMBps = average, elapsedSeconds = elapsed,
+                    remainingSeconds = if (instantSpeed > 0.0 && _progress.value.totalBytes > total)
+                        ((_progress.value.totalBytes - total) / (instantSpeed * 1024.0 * 1024.0)).toLong() else 0L)
+                lastSpeedSampleAt = now
             }
             if (update.status == PayloadTransferUpdate.Status.SUCCESS && payloadIndexes.containsKey(update.payloadId)) {
+                lastPayloadBytes.remove(update.payloadId)
                 val i = payloadIndexes.remove(update.payloadId)!!
                 val items = _progress.value.items.toMutableList()
                 if (i in items.indices) items[i] = items[i].copy(status = TransferStatus.COMPLETED, progress = 1f, transferredBytes = items[i].size)
                 _progress.value = _progress.value.copy(items = items, totalTransferredBytes = items.sumOf { it.transferredBytes })
-                if (payloadIndexes.isEmpty() && items.isNotEmpty()) {
+                if (_progress.value.isSender && payloadIndexes.isEmpty() && items.isNotEmpty()) {
                     val target = endpoint
                     if (target != null) {
                         client.sendPayload(target, Payload.fromBytes(JSONObject().put("kind", "done").toString().toByteArray()))
@@ -141,6 +172,7 @@ class NearbyTransferManager(private val context: Context, private val scope: Cor
 
     fun startReceiver() {
         stopDiscovery()
+        resetSpeedCounters()
         _progress.value = TransferProgressState(sessionState = SessionState.DISCOVERING, isSender = false, peerName = "Waiting for sender")
         client.startAdvertising(NetworkUtils.getFriendlyDeviceName(), SERVICE_ID, lifecycle,
             AdvertisingOptions.Builder().setStrategy(Strategy.P2P_POINT_TO_POINT).build())
@@ -149,6 +181,7 @@ class NearbyTransferManager(private val context: Context, private val scope: Cor
 
     fun connectAndSend(peer: PeerDevice, files: List<TransferItem>) {
         outgoing = files
+        resetSpeedCounters()
         _progress.value = TransferProgressState(sessionState = SessionState.CONNECTING, isSender = true,
             peerName = peer.name, items = files, totalBytes = files.sumOf { it.size })
         client.requestConnection(NetworkUtils.getFriendlyDeviceName(), peer.id, lifecycle)
@@ -188,6 +221,13 @@ class NearbyTransferManager(private val context: Context, private val scope: Cor
                 }
             } catch (e: Exception) { fail(e.message ?: "Could not prepare files") }
         }
+    }
+
+    private fun resetSpeedCounters() {
+        lastPayloadBytes.clear()
+        lastSpeedSampleAt = 0L
+        transferStartedAt = 0L
+        speedTotalBytes = 0L
     }
 
     private fun complete() {
