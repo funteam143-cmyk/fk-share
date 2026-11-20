@@ -78,13 +78,7 @@ fun AppNavigation(viewModel: MainViewModel) {
         viewModel.refreshNetworkState()
         viewModel.selectTab(viewModel.selectedTab.value)
         if (results.values.any { !it }) {
-            Toast.makeText(context, "Bluetooth and Nearby permissions are needed to connect phones.", Toast.LENGTH_LONG).show()
-        } else {
-            when (viewModel.currentScreen.value) {
-                Screen.DISCOVERY -> viewModel.nearbyManager.startDiscovery()
-                Screen.RECEIVER_WAITING -> viewModel.nearbyManager.startReceiver()
-                else -> Unit
-            }
+            Toast.makeText(context, "Nearby Wi-Fi permission is needed to connect phones. Allow it in App Settings.", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -109,23 +103,17 @@ fun AppNavigation(viewModel: MainViewModel) {
     // Ask for the Android permission needed for nearby Wi-Fi discovery
     // only when the user opens the phone-connection screen.
     LaunchedEffect(currentScreen) {
-        if (currentScreen == Screen.DISCOVERY || currentScreen == Screen.RECEIVER_WAITING) {
-            val nearbyPermissions = mutableListOf<String>()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                nearbyPermissions.add(Manifest.permission.BLUETOOTH_SCAN)
-                nearbyPermissions.add(Manifest.permission.BLUETOOTH_ADVERTISE)
-                nearbyPermissions.add(Manifest.permission.BLUETOOTH_CONNECT)
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                nearbyPermissions.add(Manifest.permission.NEARBY_WIFI_DEVICES)
+        if (currentScreen == Screen.DISCOVERY) {
+            val nearbyPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Manifest.permission.NEARBY_WIFI_DEVICES
             } else {
-                nearbyPermissions.add(Manifest.permission.ACCESS_FINE_LOCATION)
+                Manifest.permission.ACCESS_FINE_LOCATION
             }
-            val missingNearby = nearbyPermissions.filter {
-                ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+            if (ContextCompat.checkSelfPermission(context, nearbyPermission) != PackageManager.PERMISSION_GRANTED) {
+                permissionLauncher.launch(arrayOf(nearbyPermission))
+            } else {
+                viewModel.refreshNetworkState()
             }
-            if (missingNearby.isNotEmpty()) permissionLauncher.launch(missingNearby.toTypedArray())
-            else viewModel.refreshNetworkState()
         }
     }
 
