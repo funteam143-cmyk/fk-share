@@ -145,7 +145,8 @@ class TransferEngine(
                     configureSocket(this)
                 }
                 activeSocket = socket
-                socket.connect(InetSocketAddress(targetHost, targetPort), 12000)
+                socket.connect(InetSocketAddress(targetHost, targetPort), 10000)
+                socket.soTimeout = 15000 // fail instead of leaving the UI stuck waiting for handshake/acceptance
 
                 executeSenderTransfer(socket, peerDeviceName, selectedFiles, totalBytes, onTransferComplete)
             } catch (e: Exception) {
@@ -231,6 +232,7 @@ class TransferEngine(
 
         // 3. Await Receiver Acceptance
         val response = input.readUTF()
+        socket.soTimeout = 0 // no read timeout during large file streaming
         if (response != "FK_ACCEPT") {
             _progressState.value = _progressState.value.copy(
                 sessionState = SessionState.CANCELLED,
